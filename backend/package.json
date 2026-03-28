@@ -1,0 +1,19 @@
+{
+  "name": "siratest-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "build": "node -e \"console.log('backend: no compile step')\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "jsonwebtoken": "^9.0.2",
+    "mime-types": "^2.1.35",
+    "sira-node": "file:../.sira-src/sira-node"
+  }
+}

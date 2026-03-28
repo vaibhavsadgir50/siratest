@@ -1,0 +1,23 @@
+{
+  "name": "siratest",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "preinstall": "node scripts/ensure-sira.mjs",
+    "prepare": "node scripts/ensure-sira.mjs",
+    "postinstall": "node scripts/install-sira-assets.mjs",
+    "dev": "concurrently -k -n api,ui -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:api": "npm run dev -w backend",
+    "dev:ui": "npm run dev -w frontend",
+    "stack": "npm run build -w frontend && concurrently -k -n bundle,api -c green,blue \"npm run build:watch -w frontend\" \"npm run dev -w backend\"",
+    "build": "npm run build -w frontend && npm run build -w backend",
+    "start": "npm run start -w backend",
+    "lint": "npm run lint -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
