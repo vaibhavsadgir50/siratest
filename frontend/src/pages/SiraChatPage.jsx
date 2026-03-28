@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { createDispatchEnvelope } from '../api/dispatch.js'
 import { ChatShell } from '../components/ChatShell.jsx'
 import { useSira } from '../hooks/useSira.js'
 
 export function SiraChatPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const pendingInvite = (searchParams.get('room') || searchParams.get('join') || '').trim()
+
   const { phase, error, send, refreshAuth, ready } = useSira()
   const [session, setSession] = useState(null)
   const [authError, setAuthError] = useState('')
@@ -63,6 +67,34 @@ export function SiraChatPage() {
   }, [session, loadRooms])
 
   useEffect(() => {
+    if (!session || !ready || !pendingInvite) return
+    let cancelled = false
+    const code = pendingInvite
+    ;(async () => {
+      const r = await dispatch('room.join', { roomId: code })
+      if (cancelled) return
+      if (r?.error) {
+        setChatError(r.error)
+        return
+      }
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('room')
+          next.delete('join')
+          return next
+        },
+        { replace: true },
+      )
+      await loadRooms()
+      if (r.roomId) setRoomId(r.roomId)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [session, ready, pendingInvite, dispatch, loadRooms, setSearchParams])
+
+  useEffect(() => {
     if (!session || !roomId || !ready) return
     sinceRef.current = 0
     setMessages([])
@@ -112,6 +144,7 @@ export function SiraChatPage() {
     else {
       setJoinId('')
       await loadRooms()
+      if (r.roomId) setRoomId(r.roomId)
     }
   }
 
@@ -119,6 +152,11 @@ export function SiraChatPage() {
     return (
       <div className="page-center">
         <p>Opening Sira session…</p>
+        {pendingInvite ? (
+          <p className="chat-sub" style={{ maxWidth: '22rem', textAlign: 'center' }}>
+            Invite loaded — after you sign in, you will join that room on this device.
+          </p>
+        ) : null}
         <Link to="/">Home</Link>
       </div>
     )
@@ -132,6 +170,12 @@ export function SiraChatPage() {
       </div>
     )
   }
+
+  const selectedRoom = roomId ? rooms.find((r) => r.id === roomId) ?? null : null
+  const inviteLink =
+    session && selectedRoom
+      ? `${window.location.origin}${location.pathname}?room=${encodeURIComponent(selectedRoom.id)}`
+      : null
 
   return (
     <div className="page-wrap mode-sira">
@@ -150,6 +194,7 @@ export function SiraChatPage() {
         loggedIn={Boolean(session)}
         displayName={session?.username || ''}
         rooms={rooms}
+        selectedRoom={selectedRoom}
         selectedRoomId={roomId}
         onSelectRoom={setRoomId}
         newRoomName={newRoom}
@@ -163,6 +208,8 @@ export function SiraChatPage() {
         onDraft={setDraft}
         onSend={handleSend}
         showAuth={!session}
+        pendingRoomInvite={pendingInvite || null}
+        inviteLink={inviteLink}
         extraActions={
           <Link to="/" className="btn secondary">
             Home

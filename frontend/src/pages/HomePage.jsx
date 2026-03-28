@@ -9,6 +9,10 @@ export function HomePage() {
         goes through <strong>Sira</strong> only; everything on the right uses a conventional <strong>REST + JWT</strong>{' '}
         API.
       </p>
+      <p className="lead subtle">
+        Anyone on any device can join the same room if they use the same deployed site URL: open a chat, select the room,
+        use <strong>Copy invite link</strong>, or share the room id or name after signing in.
+      </p>
       <nav className="home-cards">
         <Link to="/chat/sira" className="home-card sira">
           <h2>Sira chat</h2>

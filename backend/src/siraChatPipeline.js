@@ -50,7 +50,7 @@ export class SiraChatPipeline extends Pipeline {
         if (err) return err
         const r = this.chat.joinRoom(userId, p.roomId)
         if (r.error) return { error: r.error }
-        return { ok: true }
+        return { ok: true, roomId: r.roomId }
       }
       case 'message.list': {
         const err = requireUser(userId)

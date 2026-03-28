@@ -130,12 +130,12 @@ export function createRestHandler({ chat, jwtSecret }) {
 
       const joinMatch = u.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/join$/)
       if (joinMatch && req.method === 'POST') {
-        const r = chat.joinRoom(userId, joinMatch[1])
+        const r = chat.joinRoom(userId, decodeURIComponent(joinMatch[1]))
         if (r.error) {
           json(res, r.error === 'not_found' ? 404 : 400, { error: r.error })
           return true
         }
-        json(res, 200, { ok: true })
+        json(res, 200, { ok: true, roomId: r.roomId })
         return true
       }
 

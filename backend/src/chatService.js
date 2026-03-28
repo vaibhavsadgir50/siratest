@@ -87,16 +87,27 @@ export function createChatService(db) {
     return { room: { id, name: n, created_at: t } }
   }
 
-  function joinRoom(userId, roomId) {
-    const room = db.prepare('SELECT id FROM rooms WHERE id = ?').get(roomId)
-    if (!room) return { error: 'not_found' }
+  function resolveRoomId(roomIdOrName) {
+    const raw = String(roomIdOrName || '').trim()
+    if (!raw) return null
+    const byId = db.prepare('SELECT id FROM rooms WHERE id = ?').get(raw)
+    if (byId) return byId.id
+    const byName = db
+      .prepare('SELECT id FROM rooms WHERE name = ? COLLATE NOCASE ORDER BY created_at ASC LIMIT 1')
+      .get(raw)
+    return byName?.id ?? null
+  }
+
+  function joinRoom(userId, roomIdOrName) {
+    const id = resolveRoomId(roomIdOrName)
+    if (!id) return { error: 'not_found' }
     const t = Date.now()
     db.prepare('INSERT OR IGNORE INTO room_members (room_id, user_id, joined_at) VALUES (?, ?, ?)').run(
-      roomId,
+      id,
       userId,
       t,
     )
-    return { ok: true }
+    return { ok: true, roomId: id }
   }
 
   function listMessages(roomId, userId, since = 0) {

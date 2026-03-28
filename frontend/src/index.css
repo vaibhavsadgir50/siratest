@@ -75,6 +75,11 @@ code {
   margin: 0 0 2rem;
 }
 
+.lead.subtle {
+  margin: -1rem 0 1.75rem;
+  font-size: 0.92rem;
+}
+
 .home-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -192,6 +197,12 @@ code {
   color: #fecaca;
 }
 
+.banner.info {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
 .auth-panel {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border);
@@ -284,6 +295,50 @@ button.room:hover {
 .chat-app button.room.active {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.room-invite {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, var(--accent));
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.room-invite-label {
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.room-invite-id {
+  display: block;
+  word-break: break-all;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.room-invite-name {
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+
+.room-invite-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.room-invite-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.3;
 }
 
 .room-actions {

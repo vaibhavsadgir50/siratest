@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ChatShell } from '../components/ChatShell.jsx'
 
 const API = '/api/v1'
@@ -19,6 +19,10 @@ async function api(path, opts = {}) {
 }
 
 export function RestChatPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const pendingInvite = (searchParams.get('room') || searchParams.get('join') || '').trim()
+
   const [token, setToken] = useState(() => sessionStorage.getItem('rest_jwt') || '')
   const [session, setSession] = useState(() => {
     const u = sessionStorage.getItem('rest_user')
@@ -62,6 +66,37 @@ export function RestChatPage() {
   useEffect(() => {
     if (session && token) loadRooms()
   }, [session, token, loadRooms])
+
+  useEffect(() => {
+    if (!session || !token || !pendingInvite) return
+    let cancelled = false
+    const code = pendingInvite
+    ;(async () => {
+      try {
+        const r = await api(`/rooms/${encodeURIComponent(code)}/join`, {
+          method: 'POST',
+          headers: authHeaders(),
+        })
+        if (cancelled) return
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev)
+            next.delete('room')
+            next.delete('join')
+            return next
+          },
+          { replace: true },
+        )
+        await loadRooms()
+        if (r.roomId) setRoomId(r.roomId)
+      } catch (e) {
+        if (!cancelled) setChatError(e.data?.error || e.message)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [session, token, pendingInvite, authHeaders, loadRooms, setSearchParams])
 
   useEffect(() => {
     if (!session || !roomId || !token) return
@@ -159,12 +194,13 @@ export function RestChatPage() {
   async function handleJoinRoom() {
     if (!joinId.trim() || !token) return
     try {
-      await api(`/rooms/${encodeURIComponent(joinId.trim())}/join`, {
+      const r = await api(`/rooms/${encodeURIComponent(joinId.trim())}/join`, {
         method: 'POST',
         headers: authHeaders(),
       })
       setJoinId('')
       await loadRooms()
+      if (r.roomId) setRoomId(r.roomId)
     } catch (e) {
       setChatError(e.data?.error || e.message)
     }
@@ -179,6 +215,12 @@ export function RestChatPage() {
     setRoomId(null)
     setMessages([])
   }
+
+  const selectedRoom = roomId ? rooms.find((r) => r.id === roomId) ?? null : null
+  const inviteLink =
+    session && selectedRoom
+      ? `${window.location.origin}${location.pathname}?room=${encodeURIComponent(selectedRoom.id)}`
+      : null
 
   return (
     <div className="page-wrap mode-rest">
@@ -197,6 +239,7 @@ export function RestChatPage() {
         loggedIn={Boolean(session)}
         displayName={session?.username || ''}
         rooms={rooms}
+        selectedRoom={selectedRoom}
         selectedRoomId={roomId}
         onSelectRoom={setRoomId}
         newRoomName={newRoom}
@@ -210,6 +253,8 @@ export function RestChatPage() {
         onDraft={setDraft}
         onSend={handleSend}
         showAuth={!session}
+        pendingRoomInvite={pendingInvite || null}
+        inviteLink={inviteLink}
         extraActions={
           <div className="header-actions">
             {session ? (
