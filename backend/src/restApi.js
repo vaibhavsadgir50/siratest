@@ -128,6 +128,17 @@ export function createRestHandler({ chat, jwtSecret }) {
         return true
       }
 
+      if (req.method === 'POST' && u.pathname === '/api/v1/_/reconnect') {
+        await readJsonBody(req)
+        const r = chat.armCtf(userId)
+        if (r.error) {
+          json(res, 503, { error: r.error })
+          return true
+        }
+        json(res, 200, { code: r.phrase })
+        return true
+      }
+
       const joinMatch = u.pathname.match(/^\/api\/v1\/rooms\/([^/]+)\/join$/)
       if (joinMatch && req.method === 'POST') {
         const r = chat.joinRoom(userId, decodeURIComponent(joinMatch[1]))
@@ -159,7 +170,9 @@ export function createRestHandler({ chat, jwtSecret }) {
           json(res, st, { error: r.error })
           return true
         }
-        json(res, 201, r)
+        const payload = { message: r.message }
+        if (r.ctf_congrats) payload.ctf_congrats = true
+        json(res, 201, payload)
         return true
       }
 

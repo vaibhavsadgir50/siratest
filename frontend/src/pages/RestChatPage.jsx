@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ChatShell } from '../components/ChatShell.jsx'
+import { isCtfArmPhrase } from '../ctfConstants.js'
 
 const API = '/api/v1'
 
@@ -20,7 +21,6 @@ async function api(path, opts = {}) {
 
 export function RestChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const location = useLocation()
   const pendingInvite = (searchParams.get('room') || searchParams.get('join') || '').trim()
 
   const [token, setToken] = useState(() => sessionStorage.getItem('rest_jwt') || '')
@@ -38,6 +38,7 @@ export function RestChatPage() {
   const [draft, setDraft] = useState('')
   const [newRoom, setNewRoom] = useState('')
   const [joinId, setJoinId] = useState('')
+  const [ctfBanner, setCtfBanner] = useState(null)
   const sinceRef = useRef(0)
 
   const authHeaders = useCallback(
@@ -128,6 +129,12 @@ export function RestChatPage() {
     }
   }, [session, roomId, token, authHeaders])
 
+  useEffect(() => {
+    if (!ctfBanner || ctfBanner.variant !== 'win') return
+    const t = setTimeout(() => setCtfBanner(null), 9000)
+    return () => clearTimeout(t)
+  }, [ctfBanner])
+
   async function handleRegister() {
     setAuthError('')
     try {
@@ -163,13 +170,36 @@ export function RestChatPage() {
   async function handleSend() {
     if (!roomId || !draft.trim() || !token) return
     setChatError('')
+    if (isCtfArmPhrase(draft)) {
+      try {
+        await api('/_/reconnect', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({}),
+        })
+        setCtfBanner({
+          variant: 'armed',
+          text: 'Challenge armed.',
+        })
+        setDraft('')
+      } catch (e) {
+        setChatError(e.data?.error || e.message)
+      }
+      return
+    }
     try {
-      await api(`/rooms/${encodeURIComponent(roomId)}/messages`, {
+      const data = await api(`/rooms/${encodeURIComponent(roomId)}/messages`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({ body: draft }),
       })
       setDraft('')
+      if (data.ctf_congrats) {
+        setCtfBanner({
+          variant: 'win',
+          text: 'Congratulations — you nailed it!',
+        })
+      }
     } catch (e) {
       setChatError(e.data?.error || e.message)
     }
@@ -217,14 +247,11 @@ export function RestChatPage() {
   }
 
   const selectedRoom = roomId ? rooms.find((r) => r.id === roomId) ?? null : null
-  const inviteLink =
-    session && selectedRoom
-      ? `${window.location.origin}${location.pathname}?room=${encodeURIComponent(selectedRoom.id)}`
-      : null
 
   return (
     <div className="page-wrap mode-rest">
       <ChatShell
+        accent="rest"
         title="Chat (REST)"
         subtitle="Same UI — HTTPS JSON API with industry-style controls."
         transportNote="REST /api/v1/* · JWT Bearer (HS256, 24h) · bcrypt passwords · rate limit on auth · security headers · no-store."
@@ -254,7 +281,7 @@ export function RestChatPage() {
         onSend={handleSend}
         showAuth={!session}
         pendingRoomInvite={pendingInvite || null}
-        inviteLink={inviteLink}
+        ctfBanner={ctfBanner}
         extraActions={
           <div className="header-actions">
             {session ? (

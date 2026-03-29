@@ -19,7 +19,7 @@ function getOrCreateLobby(db) {
   return id
 }
 
-export function createChatService(db) {
+export function createChatService(db, ctf = null) {
   function register(username, password) {
     const u = String(username || '').trim().toLowerCase()
     const p = String(password || '')
@@ -135,7 +135,14 @@ export function createChatService(db) {
     db.prepare(
       'INSERT INTO messages (id, room_id, user_id, username, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     ).run(id, roomId, userId, user.username, text, t)
-    return { message: { id, room_id: roomId, user_id: userId, username: user.username, body: text, created_at: t } }
+    const message = { id, room_id: roomId, user_id: userId, username: user.username, body: text, created_at: t }
+    const ctf_congrats = Boolean(ctf?.matches(userId, text))
+    return { message, ...(ctf_congrats ? { ctf_congrats: true } : {}) }
+  }
+
+  function armCtf(userId) {
+    if (!ctf) return { error: 'ctf_disabled' }
+    return ctf.arm(userId)
   }
 
   return {
@@ -146,6 +153,7 @@ export function createChatService(db) {
     joinRoom,
     listMessages,
     sendMessage,
+    armCtf,
     ensureLobby: () => getOrCreateLobby(db),
   }
 }

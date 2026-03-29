@@ -9,6 +9,7 @@ loadEnv()
 import { SiraServer } from 'sira-node'
 import { verifyUserToken } from './jwt.js'
 import { openDb } from './db.js'
+import { createCtfStore } from './ctf.js'
 import { createChatService } from './chatService.js'
 import { SiraChatPipeline } from './siraChatPipeline.js'
 import { createRestHandler } from './restApi.js'
@@ -34,7 +35,8 @@ if (!jwtSecret || jwtSecret.length < 16) {
 
 const dbPath = process.env.DATABASE_PATH || join(__root, 'data/chat.db')
 const db = openDb(dbPath)
-const chat = createChatService(db)
+const ctf = createCtfStore(db)
+const chat = createChatService(db, ctf)
 chat.ensureLobby()
 
 const pipeline = new SiraChatPipeline(chat, jwtSecret)

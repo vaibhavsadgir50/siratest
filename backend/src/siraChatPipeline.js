@@ -52,6 +52,13 @@ export class SiraChatPipeline extends Pipeline {
         if (r.error) return { error: r.error }
         return { ok: true, roomId: r.roomId }
       }
+      case 'ctf.arm': {
+        const err = requireUser(userId)
+        if (err) return err
+        const r = this.chat.armCtf(userId)
+        if (r.error) return { error: r.error }
+        return { code: r.phrase }
+      }
       case 'message.list': {
         const err = requireUser(userId)
         if (err) return err
@@ -64,7 +71,9 @@ export class SiraChatPipeline extends Pipeline {
         if (err) return err
         const r = this.chat.sendMessage(p.roomId, userId, p.body)
         if (r.error) return { error: r.error }
-        return { message: r.message }
+        const out = { message: r.message }
+        if (r.ctf_congrats) out.ctf_congrats = true
+        return out
       }
       default:
         return { error: 'unknown_event', event }

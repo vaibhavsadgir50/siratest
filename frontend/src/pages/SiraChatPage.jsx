@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { createDispatchEnvelope } from '../api/dispatch.js'
 import { ChatShell } from '../components/ChatShell.jsx'
+import { isCtfArmPhrase } from '../ctfConstants.js'
 import { useSira } from '../hooks/useSira.js'
 
 export function SiraChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const location = useLocation()
   const pendingInvite = (searchParams.get('room') || searchParams.get('join') || '').trim()
 
   const { phase, error, send, refreshAuth, ready } = useSira()
@@ -21,6 +21,7 @@ export function SiraChatPage() {
   const [draft, setDraft] = useState('')
   const [newRoom, setNewRoom] = useState('')
   const [joinId, setJoinId] = useState('')
+  const [ctfBanner, setCtfBanner] = useState(null)
   const sinceRef = useRef(0)
 
   const dispatch = useCallback(async (event, payload) => send(createDispatchEnvelope(event, payload)), [send])
@@ -118,12 +119,39 @@ export function SiraChatPage() {
     }
   }, [session, roomId, ready, dispatch])
 
+  useEffect(() => {
+    if (!ctfBanner || ctfBanner.variant !== 'win') return
+    const t = setTimeout(() => setCtfBanner(null), 9000)
+    return () => clearTimeout(t)
+  }, [ctfBanner])
+
   async function handleSend() {
-    if (!roomId || !draft.trim()) return
+    if (!roomId || !draft.trim() || !ready) return
     setChatError('')
+    if (isCtfArmPhrase(draft)) {
+      const r = await dispatch('ctf.arm', {})
+      if (r?.error) {
+        setChatError(r.error)
+        return
+      }
+      setCtfBanner({
+        variant: 'armed',
+        text: 'Challenge armed.',
+      })
+      setDraft('')
+      return
+    }
     const r = await dispatch('message.send', { roomId, body: draft })
     if (r?.error) setChatError(r.error)
-    else setDraft('')
+    else {
+      setDraft('')
+      if (r.ctf_congrats) {
+        setCtfBanner({
+          variant: 'win',
+          text: 'Congratulations — you nailed it!',
+        })
+      }
+    }
   }
 
   async function handleCreateRoom() {
@@ -172,14 +200,11 @@ export function SiraChatPage() {
   }
 
   const selectedRoom = roomId ? rooms.find((r) => r.id === roomId) ?? null : null
-  const inviteLink =
-    session && selectedRoom
-      ? `${window.location.origin}${location.pathname}?room=${encodeURIComponent(selectedRoom.id)}`
-      : null
 
   return (
     <div className="page-wrap mode-sira">
       <ChatShell
+        accent="sira"
         title="Chat (Sira)"
         subtitle="Same UI as the other page — all calls go through Sira dispatch only."
         transportNote="Transport: WebSocket + fixed frames after POST /h. Identity: JWT bound via POST /r refreshAuth."
@@ -209,7 +234,7 @@ export function SiraChatPage() {
         onSend={handleSend}
         showAuth={!session}
         pendingRoomInvite={pendingInvite || null}
-        inviteLink={inviteLink}
+        ctfBanner={ctfBanner}
         extraActions={
           <Link to="/" className="btn secondary">
             Home
